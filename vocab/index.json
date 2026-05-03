@@ -1,5 +1,12 @@
 {
   "files": [
-    { "path": "sample.md", "label": "sample" }
+    {
+      "path": "sample.md",
+      "label": "sample"
+    },
+    {
+      "path": "英会話_重要単語フレーズまとめ_20260503.md",
+      "label": "英会話_重要単語フレーズまとめ_20260503"
+    }
   ]
 }
