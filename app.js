@@ -1,4 +1,4 @@
-// 英単語リスナー - Web Speech API で読み上げる単語帳 PWA
+// 英タンゴ復習するンゴ - Web Speech API で読み上げる単語帳 PWA
 
 const SETTINGS_KEY = "vocab-pwa.settings.v1";
 const DEFAULT_SETTINGS = {
@@ -8,6 +8,7 @@ const DEFAULT_SETTINGS = {
   pauseMs: 600,
   speakMeaning: true,
   speakExample: true,
+  speakExampleJa: true,
   repeatWord: 2,
   wakeLock: true,
   repeatPlaylist: false,
@@ -29,19 +30,46 @@ let wakeLockSentinel = null;
  *   **word**：meaning
  *
  *   例）example sentence
+ *   訳）日本語訳
  *
  * Tolerates: half/full-width colons and parens, multiple examples,
- * "例文)", "例1)", "Example:", section headings (## ...), and notes.
+ * "例文)", "例1)", "Example:", parenthetical translation on the same
+ * line as 例), section headings (## ...), and notes.
+ *
+ * Each example is { en: string, ja: string } where ja may be "".
  */
+
+// CJK / kana detector — used to split inline "(訳)" tails from English.
+const CJK_RE = /[぀-ヿ㐀-䶿一-鿿ｦ-ﾟ]/;
+
+function splitInlineTranslation(text) {
+  // "English. (日本語訳。)" or "English. （日本語訳。）"
+  const m = text.match(/^(.*?)\s*[（(]\s*([^()（）]*?)\s*[）)]\s*$/);
+  if (m && CJK_RE.test(m[2])) {
+    return { en: m[1].trim(), ja: m[2].trim() };
+  }
+  return { en: text.trim(), ja: "" };
+}
+
 function parseVocab(md) {
   const entries = [];
   const lines = md.split(/\r?\n/);
   let current = null;
   let currentSection = "";
+  let lastWasExample = false;
 
   const finalize = () => {
     if (current && current.word) entries.push(current);
     current = null;
+    lastWasExample = false;
+  };
+
+  const pushExample = (text) => {
+    const split = splitInlineTranslation(text);
+    if (split.en) {
+      current.examples.push({ en: split.en, ja: split.ja });
+      lastWasExample = true;
+    }
   };
 
   for (const raw of lines) {
@@ -67,10 +95,22 @@ function parseVocab(md) {
         notes: [],
         section: currentSection,
       };
+      lastWasExample = false;
       continue;
     }
 
     if (!current) continue;
+
+    // 訳）/ 訳: / Translation: / Tr:
+    const tr = line.match(
+      /^(?:訳|和訳|日本語訳|Translation|Trans|Tr)\s*[）)\]:：]\s*(.+)$/i
+    );
+    if (tr && current.examples.length) {
+      const last = current.examples[current.examples.length - 1];
+      if (!last.ja) last.ja = tr[1].trim();
+      else last.ja += " " + tr[1].trim();
+      continue;
+    }
 
     // Example: 例）..., 例文), 例1）, Example:, Ex:
     const ex = line.match(
@@ -78,7 +118,7 @@ function parseVocab(md) {
     );
     if (ex) {
       const text = ex[1].trim();
-      if (text) current.examples.push(text);
+      if (text) pushExample(text);
       continue;
     }
 
@@ -87,7 +127,7 @@ function parseVocab(md) {
       /^[-*]\s+(?:例(?:文)?|Example|Ex)\s*[）)\]:：]\s*(.+)$/i
     );
     if (bulletEx) {
-      current.examples.push(bulletEx[1].trim());
+      pushExample(bulletEx[1].trim());
       continue;
     }
 
@@ -98,17 +138,30 @@ function parseVocab(md) {
     if (bulletMeaning) {
       if (!current.meaning) current.meaning = bulletMeaning[1].trim();
       else current.notes.push(bulletMeaning[1].trim());
+      lastWasExample = false;
       continue;
+    }
+
+    // Continuation right after 例) line — if the line is mostly Japanese,
+    // treat it as the translation of the last example.
+    if (lastWasExample && current.examples.length) {
+      const last = current.examples[current.examples.length - 1];
+      if (!last.ja && CJK_RE.test(line)) {
+        last.ja = line;
+        continue;
+      }
     }
 
     // No meaning yet → take this line as meaning
     if (!current.meaning) {
       current.meaning = line;
+      lastWasExample = false;
       continue;
     }
 
-    // Otherwise treat as a note (append to last example if it looks like a continuation)
+    // Otherwise treat as a note
     current.notes.push(line);
+    lastWasExample = false;
   }
 
   finalize();
@@ -253,16 +306,20 @@ const player = {
     const wordEl = document.getElementById("wordText");
     const meaningEl = document.getElementById("meaningText");
     const exampleEl = document.getElementById("exampleText");
+    const exampleJaEl = document.getElementById("exampleJaText");
     const posEl = document.getElementById("positionText");
     const fillEl = document.getElementById("progressFill");
     if (e) {
       wordEl.textContent = e.word;
       meaningEl.textContent = e.meaning || "　";
-      exampleEl.textContent = e.examples[0] || "　";
+      const first = e.examples[0];
+      exampleEl.textContent = first?.en || "　";
+      exampleJaEl.textContent = first?.ja || "　";
     } else {
       wordEl.textContent = "—";
       meaningEl.textContent = "　";
       exampleEl.textContent = "　";
+      exampleJaEl.textContent = "　";
     }
     const total = this.entries.length;
     posEl.textContent = `${this.cursor + 1} / ${total}`;
@@ -307,7 +364,11 @@ const player = {
         await sleep(settings.pauseMs);
         for (const ex of e.examples) {
           if (myRun !== this.abortRun || !this.playing) break;
-          await speak(ex, "en-US");
+          await speak(ex.en, "en-US");
+          if (settings.speakExampleJa && ex.ja && this.playing && myRun === this.abortRun) {
+            await sleep(Math.min(settings.pauseMs, 400));
+            await speak(ex.ja, "ja-JP");
+          }
           await sleep(Math.min(settings.pauseMs, 400));
         }
       }
@@ -416,7 +477,7 @@ function showView(name) {
   });
   document.getElementById("backBtn").hidden = name === "fileList";
   const titles = {
-    fileList: "英単語リスナー",
+    fileList: "英タンゴ復習するンゴ",
     player: currentFileLabel || "再生",
     settings: "設定",
   };
@@ -516,6 +577,7 @@ function applySettingsToUI() {
   document.getElementById("pauseLabel").textContent = settings.pauseMs;
   document.getElementById("speakMeaning").checked = settings.speakMeaning;
   document.getElementById("speakExample").checked = settings.speakExample;
+  document.getElementById("speakExampleJa").checked = settings.speakExampleJa;
   document.getElementById("repeatWord").value = String(settings.repeatWord);
   document.getElementById("wakeLock").checked = settings.wakeLock;
   document.getElementById("repeatBtn").setAttribute("aria-pressed", String(settings.repeatPlaylist));
@@ -548,6 +610,10 @@ function bindSettingsControls() {
   });
   document.getElementById("speakExample").addEventListener("change", (e) => {
     settings.speakExample = e.target.checked;
+    saveSettings();
+  });
+  document.getElementById("speakExampleJa").addEventListener("change", (e) => {
+    settings.speakExampleJa = e.target.checked;
     saveSettings();
   });
   document.getElementById("repeatWord").addEventListener("change", (e) => {

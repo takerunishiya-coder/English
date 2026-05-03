@@ -1,7 +1,7 @@
 {
-  "name": "英単語リスナー",
-  "short_name": "単語リスナー",
-  "description": "英単語と意味・例文を読み上げるオリジナル単語帳",
+  "name": "英タンゴ復習するンゴ",
+  "short_name": "復習するンゴ",
+  "description": "英単語・意味・例文・訳を読み上げるオリジナル単語帳",
   "start_url": "./",
   "scope": "./",
   "display": "standalone",

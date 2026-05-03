@@ -4,7 +4,7 @@
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
   <meta name="theme-color" content="#0f172a" />
-  <title>英単語リスナー</title>
+  <title>英タンゴ復習するンゴ</title>
   <link rel="manifest" href="manifest.webmanifest" />
   <link rel="icon" href="icons/icon-192.png" />
   <link rel="apple-touch-icon" href="icons/icon-192.png" />
@@ -13,7 +13,7 @@
 <body>
   <header class="topbar">
     <button id="backBtn" class="icon-btn" hidden aria-label="戻る">←</button>
-    <h1 id="title">英単語リスナー</h1>
+    <h1 id="title">英タンゴ復習するンゴ</h1>
     <button id="settingsBtn" class="icon-btn" aria-label="設定">⚙</button>
   </header>
 
@@ -38,6 +38,7 @@
         <h2 id="wordText" class="word">—</h2>
         <p id="meaningText" class="meaning">　</p>
         <p id="exampleText" class="example">　</p>
+        <p id="exampleJaText" class="example-ja">　</p>
       </article>
 
       <div class="controls">
@@ -86,6 +87,9 @@
       </div>
       <div class="setting">
         <label><input type="checkbox" id="speakExample" checked /> 例文を読み上げる</label>
+      </div>
+      <div class="setting">
+        <label><input type="checkbox" id="speakExampleJa" checked /> 例文の日本語訳も読み上げる</label>
       </div>
       <div class="setting">
         <label for="repeatWord">英単語のリピート回数</label>

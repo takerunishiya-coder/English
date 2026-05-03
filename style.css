@@ -161,8 +161,15 @@ main {
 .example {
   font-size: clamp(14px, 3.6vw, 17px);
   color: var(--muted);
-  margin: 0;
+  margin: 0 0 8px;
   font-style: italic;
+  line-height: 1.6;
+}
+.example-ja {
+  font-size: clamp(13px, 3.4vw, 15px);
+  color: var(--muted);
+  opacity: 0.85;
+  margin: 0;
   line-height: 1.6;
 }
 
