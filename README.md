@@ -2,9 +2,10 @@
 
 Obsidian でまとめた英単語ファイルを、スマホで読み上げて聞ける PWA です。
 
-- **完全無料 / ランニング費用ゼロ**: GitHub Pages + ブラウザ内蔵の Web Speech API
+- **完全無料 / ランニング費用ゼロ**: GitHub Pages + ブラウザ内蔵の Web Speech API + OSS TTS (espeak-ng) で事前生成
 - **PWA**: スマホのホーム画面に追加すれば普通のアプリのように使えます
 - **オフライン対応**: 一度開けば電波がなくても再生できます
+- **バックグラウンド / ロック画面再生対応**: CI が事前生成した MP3 を `<audio>` + MediaSession で再生（音質は機械的だが画面OFFでも継続）
 - **md ファイルを置くだけ**: `vocab/` に `.md` を追加して push するだけで自動反映
 - **読み上げ順**: 英単語 → 日本語の意味 → 英語例文 → 日本語訳
 
@@ -100,25 +101,48 @@ push すると GitHub Actions が自動で:
 ```
 English/
 ├── index.html              # 画面
-├── app.js                  # 読み上げロジック + パーサー
+├── app.js                  # 再生ロジック + パーサー + MediaSession 統合
 ├── style.css
 ├── manifest.webmanifest    # PWA 定義
-├── sw.js                   # オフライン対応の Service Worker
+├── sw.js                   # オフライン対応の Service Worker (音声 mp3 もキャッシュ)
 ├── icons/
 │   ├── icon-192.png 等     # アプリアイコン
 │   └── install-qr.png      # インストール用 QR
 ├── vocab/
 │   ├── index.json          # ← Actions が自動生成
-│   └── *.md                # ← 単語まとめ md ファイル
+│   ├── *.md                # ← 単語まとめ md ファイル
+│   └── audio/              # ← Actions が事前生成 (espeak-ng + ffmpeg)
+│       └── <basename>/
+│           ├── manifest.json
+│           └── eNNNN/word.mp3 / meaning.mp3 / exN_en.mp3 / exN_ja.mp3
 ├── scripts/
 │   ├── generate_icons.py   # アイコン再生成
-│   └── generate_qr.py      # QR 再生成
+│   ├── generate_qr.py      # QR 再生成
+│   └── generate_audio.py   # 音声 mp3 を事前生成 (espeak-ng + ffmpeg)
 └── .github/workflows/
-    └── deploy.yml          # Pages デプロイ + index.json 生成
+    └── deploy.yml          # Pages デプロイ + index.json 生成 + 音声生成
 ```
 
-- 読み上げは **Web Speech API** (`speechSynthesis`)。サーバー不要・完全無料
-- 英語 / 日本語の声はブラウザ・OS にインストール済みのものを使用
+### 音声ソースは 2 系統
+
+| モード | エンジン | バックグラウンド再生 | 音質 |
+| --- | --- | --- | --- |
+| **事前生成 (デフォルト)** | espeak-ng で生成した MP3 を `<audio>` + MediaSession で再生 | ✅ 画面OFF / ロック画面 / 別アプリ中も継続 | 機械的・低め |
+| **端末TTS (フォールバック)** | Web Speech API (`speechSynthesis`) | ❌ 画面OFFで停止する端末あり | OS依存（高品質） |
+
+**設定 → 「音声ソース」** で切替可能（`auto` / `事前生成のみ` / `端末TTSのみ`）。
+manifest が見つからない単語ファイルは自動で端末TTSに落ちます。
+
+### ローカルで音声を再生成する
+
+```bash
+sudo apt-get install -y espeak-ng ffmpeg     # 初回のみ
+python3 scripts/generate_audio.py            # vocab/audio/ に出力
+python3 scripts/generate_audio.py --force    # キャッシュを無視して全再生成
+```
+
+各 md の SHA-256 を `manifest.json` に持つので、未変更ファイルは自動でスキップされます。
+
 - 設定（速度・声・訳の読み上げなど）はブラウザの `localStorage` に保存
 
 ---
@@ -135,10 +159,13 @@ python3 -m http.server 8080
 
 ## 6. 注意事項 / 既知の制約
 
-- **声の品質は OS 依存**: iOS の Siri 系・Android の Google TTS が高品質。PC では Edge / Chrome の Online Voice が綺麗
-- **iOS Safari**: 初回は再生ボタンを 1 回タップしないと TTS が起動しません（仕様）
-- **オフライン時**: 一度ロードしたファイルのみ再生可能。新規 .md は通信が必要
-- **Wake Lock**: 再生中は画面を点けたままにしますが、対応していない端末では効きません
+- **声の品質**:
+  - 事前生成モードは **espeak-ng** の機械音声 (`en-us+f3` / `ja+f3`)。聞き取りには問題ないがロボット声
+  - 端末TTSモードは OS 依存。iOS の Siri 系・Android の Google TTS が高品質。PC では Edge / Chrome の Online Voice が綺麗
+- **iOS Safari**: 初回は再生ボタンを 1 回タップしないと音声が起動しません（仕様）
+- **バックグラウンド再生**: 事前生成モードのみ対応。端末TTSモードは画面OFFで停止する端末があります
+- **オフライン時**: 一度再生した単語ファイルの mp3 は SW がキャッシュするので、以後は通信不要
+- **Wake Lock**: 端末TTSモードのみ意味があります（事前生成モードは画面OFFでも継続）
 
 ---
 

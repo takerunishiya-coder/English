@@ -33,6 +33,7 @@
     <section id="playerView" class="view" hidden>
       <div id="progressBar"><div id="progressFill"></div></div>
       <p id="positionText" class="position-text">0 / 0</p>
+      <p id="audioSourceBadge" class="audio-source-badge" data-mode="tts">🗣 端末TTS (画面ON必須)</p>
 
       <article id="card" class="card">
         <h2 id="wordText" class="word">—</h2>
@@ -57,6 +58,10 @@
         <summary>単語リストを表示</summary>
         <ol id="wordList" class="word-list"></ol>
       </details>
+
+      <!-- Persistent <audio> element used for pre-generated mp3 playback.
+           Required for MediaSession API / lock-screen control / background play. -->
+      <audio id="playbackAudio" preload="auto" playsinline></audio>
     </section>
 
     <!-- Settings view -->
@@ -102,6 +107,19 @@
 
       <div class="setting">
         <label><input type="checkbox" id="wakeLock" checked /> 再生中は画面をスリープさせない</label>
+      </div>
+
+      <div class="setting">
+        <label for="audioSource">音声ソース</label>
+        <select id="audioSource">
+          <option value="auto">自動 (事前生成があればそれを使用)</option>
+          <option value="file">事前生成のみ (ロック画面再生対応)</option>
+          <option value="tts">端末TTSのみ (Web Speech API)</option>
+        </select>
+        <p class="hint">
+          事前生成音声は <code>vocab/audio/</code> に CI が自動生成します。<br />
+          MP3 として再生されるため、ロック画面・バックグラウンドでも再生継続できます (espeak-ng の機械的な音質)。
+        </p>
       </div>
 
       <p class="hint">設定はこの端末のブラウザに自動保存されます。</p>
