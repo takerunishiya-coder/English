@@ -1,0 +1,308 @@
+:root {
+  --bg: #0f172a;
+  --surface: #1e293b;
+  --surface-2: #334155;
+  --text: #f1f5f9;
+  --muted: #94a3b8;
+  --accent: #38bdf8;
+  --accent-strong: #0284c7;
+  --danger: #ef4444;
+  --radius: 14px;
+  --max-w: 720px;
+}
+
+@media (prefers-color-scheme: light) {
+  :root {
+    --bg: #f8fafc;
+    --surface: #ffffff;
+    --surface-2: #e2e8f0;
+    --text: #0f172a;
+    --muted: #475569;
+    --accent: #0284c7;
+    --accent-strong: #0369a1;
+  }
+}
+
+* { box-sizing: border-box; }
+
+html, body {
+  margin: 0;
+  padding: 0;
+  background: var(--bg);
+  color: var(--text);
+  font-family: -apple-system, BlinkMacSystemFont, "Hiragino Kaku Gothic ProN",
+    "Hiragino Sans", "Yu Gothic", Meiryo, "Segoe UI", Roboto, sans-serif;
+  -webkit-tap-highlight-color: transparent;
+  min-height: 100dvh;
+}
+
+.topbar {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: max(env(safe-area-inset-top), 12px) 16px 12px;
+  background: var(--surface);
+  border-bottom: 1px solid var(--surface-2);
+  position: sticky;
+  top: 0;
+  z-index: 10;
+}
+
+.topbar h1 {
+  font-size: 18px;
+  margin: 0;
+  flex: 1;
+  text-align: center;
+  font-weight: 600;
+}
+
+.icon-btn {
+  background: transparent;
+  border: 0;
+  color: var(--text);
+  font-size: 22px;
+  width: 40px;
+  height: 40px;
+  border-radius: 10px;
+  cursor: pointer;
+}
+.icon-btn:active { background: var(--surface-2); }
+
+main {
+  max-width: var(--max-w);
+  margin: 0 auto;
+  padding: 16px;
+  padding-bottom: calc(env(safe-area-inset-bottom) + 24px);
+}
+
+.view { animation: fade .2s ease; }
+@keyframes fade { from { opacity: 0; transform: translateY(4px); } to { opacity: 1; transform: none; } }
+
+.hint {
+  color: var(--muted);
+  font-size: 14px;
+  margin: 8px 0 16px;
+}
+
+.empty {
+  background: var(--surface);
+  border: 1px dashed var(--surface-2);
+  border-radius: var(--radius);
+  padding: 24px;
+  text-align: center;
+  color: var(--muted);
+  line-height: 1.7;
+}
+.empty code {
+  background: var(--surface-2);
+  padding: 2px 6px;
+  border-radius: 6px;
+  font-size: 13px;
+}
+
+/* File list */
+.file-list {
+  list-style: none;
+  padding: 0;
+  margin: 0;
+  display: grid;
+  gap: 10px;
+}
+.file-list button {
+  width: 100%;
+  text-align: left;
+  background: var(--surface);
+  color: var(--text);
+  border: 1px solid var(--surface-2);
+  border-radius: var(--radius);
+  padding: 16px 18px;
+  font-size: 16px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  cursor: pointer;
+}
+.file-list button:active { background: var(--surface-2); }
+.file-list .count {
+  color: var(--muted);
+  font-size: 13px;
+  background: var(--surface-2);
+  padding: 4px 10px;
+  border-radius: 999px;
+}
+
+/* Player */
+.card {
+  background: var(--surface);
+  border-radius: var(--radius);
+  padding: 28px 20px;
+  margin: 12px 0 20px;
+  min-height: 240px;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  align-items: center;
+  text-align: center;
+  border: 1px solid var(--surface-2);
+}
+.word {
+  font-size: clamp(28px, 7vw, 40px);
+  margin: 0 0 16px;
+  font-weight: 700;
+  word-break: break-word;
+}
+.meaning {
+  font-size: clamp(16px, 4vw, 20px);
+  color: var(--accent);
+  margin: 0 0 18px;
+  line-height: 1.6;
+}
+.example {
+  font-size: clamp(14px, 3.6vw, 17px);
+  color: var(--muted);
+  margin: 0;
+  font-style: italic;
+  line-height: 1.6;
+}
+
+#progressBar {
+  height: 4px;
+  background: var(--surface-2);
+  border-radius: 2px;
+  overflow: hidden;
+}
+#progressFill {
+  height: 100%;
+  background: var(--accent);
+  width: 0%;
+  transition: width .25s ease;
+}
+.position-text {
+  text-align: center;
+  color: var(--muted);
+  font-size: 13px;
+  margin: 8px 0 0;
+}
+
+.controls {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  gap: 24px;
+  margin: 8px 0 16px;
+}
+.ctl-btn {
+  width: 60px;
+  height: 60px;
+  border-radius: 50%;
+  background: var(--surface);
+  border: 1px solid var(--surface-2);
+  color: var(--text);
+  font-size: 24px;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+.ctl-btn.primary {
+  width: 76px;
+  height: 76px;
+  background: var(--accent);
+  color: #001018;
+  border: 0;
+  font-size: 30px;
+  box-shadow: 0 8px 24px rgba(56, 189, 248, .35);
+}
+.ctl-btn:active { transform: scale(.96); }
+
+.secondary-controls {
+  display: flex;
+  justify-content: center;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-bottom: 12px;
+}
+.chip {
+  background: var(--surface);
+  color: var(--muted);
+  border: 1px solid var(--surface-2);
+  border-radius: 999px;
+  padding: 8px 14px;
+  font-size: 13px;
+  cursor: pointer;
+}
+.chip[aria-pressed="true"] {
+  background: var(--accent);
+  color: #001018;
+  border-color: var(--accent);
+}
+
+.word-list-toggle {
+  margin-top: 20px;
+  background: var(--surface);
+  border-radius: var(--radius);
+  border: 1px solid var(--surface-2);
+  padding: 0 12px;
+}
+.word-list-toggle summary {
+  padding: 12px;
+  cursor: pointer;
+  color: var(--muted);
+  font-size: 14px;
+}
+.word-list {
+  list-style: none;
+  padding: 0 0 8px;
+  margin: 0;
+  max-height: 50vh;
+  overflow: auto;
+}
+.word-list li {
+  padding: 10px 12px;
+  border-top: 1px solid var(--surface-2);
+  cursor: pointer;
+  font-size: 14px;
+  display: flex;
+  gap: 12px;
+}
+.word-list li.active {
+  background: var(--surface-2);
+  color: var(--accent);
+  font-weight: 600;
+}
+.word-list li .num {
+  color: var(--muted);
+  width: 32px;
+  flex: 0 0 32px;
+  text-align: right;
+}
+
+/* Settings */
+.setting {
+  background: var(--surface);
+  border: 1px solid var(--surface-2);
+  border-radius: var(--radius);
+  padding: 14px 16px;
+  margin-bottom: 10px;
+}
+.setting label {
+  display: block;
+  font-size: 14px;
+  color: var(--muted);
+  margin-bottom: 8px;
+}
+.setting input[type="range"],
+.setting select {
+  width: 100%;
+  background: var(--surface-2);
+  color: var(--text);
+  border: 0;
+  border-radius: 8px;
+  padding: 8px;
+  font-size: 14px;
+}
+.setting input[type="checkbox"] {
+  margin-right: 8px;
+  transform: scale(1.2);
+}
