@@ -1,7 +1,7 @@
 ﻿// Service worker for offline support of the app shell.
 // Vocabulary files (vocab/) are always fetched fresh and cached as a fallback.
 
-const CACHE = "vocab-pwa-v3";
+const CACHE = "vocab-pwa-v4";
 const SHELL = [
   "./",
   "./index.html",

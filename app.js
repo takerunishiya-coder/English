@@ -21,6 +21,8 @@ let voices = [];
 let currentEntries = [];
 let currentFileLabel = "";
 let wakeLockSentinel = null;
+let silentAudio = null;
+let silentAudioStarted = false;
 
 // ---------- Markdown parser ----------
 
@@ -332,12 +334,17 @@ const player = {
 
     // play button label
     document.getElementById("playBtn").textContent = this.playing ? "⏸" : "▶";
+
+    updateMediaSession();
   },
 
   async play() {
     if (this.playing) return;
     if (!this.entries.length) return;
     this.playing = true;
+    // Start silent audio FIRST (within the user gesture) so the browser
+    // grants playback. This unlocks background speech on mobile.
+    await startSilentAudio();
     this.render();
     await acquireWakeLock();
 
@@ -399,6 +406,7 @@ const player = {
     }
 
     releaseWakeLock();
+    stopSilentAudio();
     this.playing = false;
     this.render();
   },
@@ -409,6 +417,7 @@ const player = {
     abortSpeak();
     sleep._cancel?.();
     releaseWakeLock();
+    stopSilentAudio();
     this.render();
   },
 
@@ -451,8 +460,12 @@ const player = {
 
 async function acquireWakeLock() {
   if (!settings.wakeLock || !("wakeLock" in navigator)) return;
+  if (wakeLockSentinel) return;
   try {
     wakeLockSentinel = await navigator.wakeLock.request("screen");
+    wakeLockSentinel.addEventListener("release", () => {
+      wakeLockSentinel = null;
+    });
   } catch (_) {}
 }
 
@@ -463,9 +476,103 @@ function releaseWakeLock() {
   }
 }
 
+// ---------- Background audio (silent loop) ----------
+// Mobile browsers suspend speechSynthesis when the tab is backgrounded.
+// Playing a silent audio loop signals "media is playing" so the browser
+// keeps the tab active and the OS shows lock-screen controls.
+
+function makeSilentWavDataURL() {
+  const sampleRate = 8000;
+  const numSamples = 800; // 0.1s
+  const buffer = new ArrayBuffer(44 + numSamples * 2);
+  const view = new DataView(buffer);
+  // RIFF header
+  view.setUint32(0, 0x52494646, false);
+  view.setUint32(4, 36 + numSamples * 2, true);
+  view.setUint32(8, 0x57415645, false);
+  // fmt chunk
+  view.setUint32(12, 0x666d7420, false);
+  view.setUint32(16, 16, true);
+  view.setUint16(20, 1, true);
+  view.setUint16(22, 1, true);
+  view.setUint32(24, sampleRate, true);
+  view.setUint32(28, sampleRate * 2, true);
+  view.setUint16(32, 2, true);
+  view.setUint16(34, 16, true);
+  // data chunk (samples are zero-initialised = silence)
+  view.setUint32(36, 0x64617461, false);
+  view.setUint32(40, numSamples * 2, true);
+  const bytes = new Uint8Array(buffer);
+  let binary = "";
+  for (let i = 0; i < bytes.length; i++) binary += String.fromCharCode(bytes[i]);
+  return "data:audio/wav;base64," + btoa(binary);
+}
+
+function ensureSilentAudio() {
+  if (silentAudio) return silentAudio;
+  silentAudio = new Audio(makeSilentWavDataURL());
+  silentAudio.loop = true;
+  silentAudio.preload = "auto";
+  // Some browsers ignore volume 0; a tiny non-zero value is safer.
+  silentAudio.volume = 0.001;
+  return silentAudio;
+}
+
+async function startSilentAudio() {
+  const a = ensureSilentAudio();
+  try {
+    await a.play();
+    silentAudioStarted = true;
+  } catch (_) {}
+}
+
+function stopSilentAudio() {
+  if (silentAudio) silentAudio.pause();
+  silentAudioStarted = false;
+}
+
+// ---------- MediaSession (lock-screen controls) ----------
+
+function setupMediaSession() {
+  if (!("mediaSession" in navigator)) return;
+  try {
+    navigator.mediaSession.setActionHandler("play", () => {
+      if (!player.playing) player.play();
+    });
+    navigator.mediaSession.setActionHandler("pause", () => {
+      if (player.playing) player.pause();
+    });
+    navigator.mediaSession.setActionHandler("nexttrack", () => player.next());
+    navigator.mediaSession.setActionHandler("previoustrack", () => player.prev());
+  } catch (_) {}
+}
+
+function updateMediaSession() {
+  if (!("mediaSession" in navigator)) return;
+  const e = player.current();
+  try {
+    if (e && "MediaMetadata" in window) {
+      navigator.mediaSession.metadata = new MediaMetadata({
+        title: e.word || "—",
+        artist: e.meaning || "",
+        album: currentFileLabel || "英タンゴ復習するンゴ",
+        artwork: [
+          { src: "icons/icon-192.png", sizes: "192x192", type: "image/png" },
+          { src: "icons/icon-512.png", sizes: "512x512", type: "image/png" },
+        ],
+      });
+    }
+    navigator.mediaSession.playbackState = player.playing ? "playing" : "paused";
+  } catch (_) {}
+}
+
 document.addEventListener("visibilitychange", async () => {
   if (document.visibilityState === "visible" && player.playing) {
     await acquireWakeLock();
+    // Re-kick silent audio in case the OS paused it on visibility change.
+    if (silentAudio && silentAudio.paused) {
+      try { await silentAudio.play(); } catch (_) {}
+    }
   }
 });
 
@@ -670,6 +777,8 @@ async function init() {
     autoBtn.setAttribute("aria-pressed", String(settings.autoAdvance));
     saveSettings();
   });
+
+  setupMediaSession();
 
   await renderFileList();
   showView("fileList");
