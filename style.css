@@ -192,29 +192,6 @@ main {
   margin: 8px 0 0;
 }
 
-.audio-source-badge {
-  text-align: center;
-  font-size: 12px;
-  margin: 4px 0 0;
-  padding: 4px 10px;
-  border-radius: 999px;
-  display: inline-block;
-  width: fit-content;
-  margin-left: auto;
-  margin-right: auto;
-  background: var(--surface);
-  color: var(--muted);
-  border: 1px solid var(--surface-2);
-}
-.audio-source-badge[data-mode="file"] {
-  background: rgba(56, 189, 248, .15);
-  color: var(--accent);
-  border-color: rgba(56, 189, 248, .35);
-}
-/* Audio element is invisible. `[hidden]` on a view must still hide it. */
-#playbackAudio { display: none; }
-[hidden] { display: none !important; }
-
 .controls {
   display: flex;
   justify-content: center;
